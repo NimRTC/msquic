@@ -122,6 +122,7 @@ QuicConnAlloc(
     Connection->Settings.IsSetFlags = 0; // Just grab the global values, not IsSet flags.
     CxPlatDispatchLockInitialize(&Connection->ReceiveQueueLock);
     CxPlatListInitializeHead(&Connection->DestCids);
+    CxPlatListInitializeHead(&Connection->RetiredDestCids);
     QuicStreamSetInitialize(&Connection->Streams);
     QuicSendBufferInitialize(&Connection->SendBuffer);
     QuicOperationQueueInitialize(&Connection->OperQ);
@@ -297,6 +298,14 @@ Error:
                 Link);
         CXPLAT_FREE(CID, QUIC_POOL_CIDLIST);
     }
+    while (!CxPlatListIsEmpty(&Connection->RetiredDestCids)) {
+        QUIC_CID_LIST_ENTRY *CID =
+            CXPLAT_CONTAINING_RECORD(
+                CxPlatListRemoveHead(&Connection->RetiredDestCids),
+                QUIC_CID_LIST_ENTRY,
+                Link);
+        CXPLAT_FREE(CID, QUIC_POOL_CIDLIST);
+    }
     QuicConnRelease(Connection, QUIC_CONN_REF_HANDLE_OWNER);
 
     return Status;
@@ -345,6 +354,14 @@ QuicConnFree(
         QUIC_CID_LIST_ENTRY *CID =
             CXPLAT_CONTAINING_RECORD(
                 CxPlatListRemoveHead(&Connection->DestCids),
+                QUIC_CID_LIST_ENTRY,
+                Link);
+        CXPLAT_FREE(CID, QUIC_POOL_CIDLIST);
+    }
+    while (!CxPlatListIsEmpty(&Connection->RetiredDestCids)) {
+        QUIC_CID_LIST_ENTRY *CID =
+            CXPLAT_CONTAINING_RECORD(
+                CxPlatListRemoveHead(&Connection->RetiredDestCids),
                 QUIC_CID_LIST_ENTRY,
                 Link);
         CXPLAT_FREE(CID, QUIC_POOL_CIDLIST);

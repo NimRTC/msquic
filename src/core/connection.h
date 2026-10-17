@@ -518,6 +518,14 @@ typedef struct QUIC_CONNECTION {
     CXPLAT_LIST_ENTRY DestCids;
 
     //
+    // Dest CIDs for which a RETIRE_CONNECTION_ID frame has been sent.
+    // Moved here from DestCids during send processing after frame encoding.
+    // Invariant: entries are Retired, path-detached, and peer-notified, so
+    // ACK processing can safely free them.
+    //
+    CXPLAT_LIST_ENTRY RetiredDestCids;
+
+    //
     // The original CID used by the Client in its first Initial packet.
     //
     QUIC_CID* OrigDestCID;
@@ -1363,6 +1371,37 @@ QuicConnGetDestCidFromSeq(
 {
     for (CXPLAT_LIST_ENTRY* Entry = Connection->DestCids.Flink;
             Entry != &Connection->DestCids;
+            Entry = Entry->Flink) {
+        QUIC_CID_LIST_ENTRY* DestCid =
+            CXPLAT_CONTAINING_RECORD(
+                Entry,
+                QUIC_CID_LIST_ENTRY,
+                Link);
+        if (DestCid->CID.SequenceNumber == SequenceNumber) {
+            if (RemoveFromList) {
+                CxPlatListEntryRemove(Entry);
+            }
+            return DestCid;
+        }
+    }
+    return NULL;
+}
+
+//
+// Look up a retired destination CID (fully detached from all paths)
+// by sequence number.
+//
+_IRQL_requires_max_(DISPATCH_LEVEL)
+QUIC_INLINE
+QUIC_CID_LIST_ENTRY*
+QuicConnGetRetiredDestCidFromSeq(
+    _In_ QUIC_CONNECTION* Connection,
+    _In_ QUIC_VAR_INT SequenceNumber,
+    _In_ BOOLEAN RemoveFromList
+    )
+{
+    for (CXPLAT_LIST_ENTRY* Entry = Connection->RetiredDestCids.Flink;
+            Entry != &Connection->RetiredDestCids;
             Entry = Entry->Flink) {
         QUIC_CID_LIST_ENTRY* DestCid =
             CXPLAT_CONTAINING_RECORD(
