@@ -17,7 +17,7 @@ if("${CX_PLATFORM}" STREQUAL "windows")
        QUIC_GAMECORE_BUILD OR
        ${SYSTEM_PROCESSOR} STREQUAL "arm" OR
        ${SYSTEM_PROCESSOR} STREQUAL "arm64" OR
-       ${SYSTEM_PROCESSOR} STREQUAL "arm64ec")
+       ${SYSTEM_PROCESSOR} STREQUAL "arm64ec" OR TRUE)  # NimRTC: force dummy raw datapath
         set(SOURCES ${SOURCES} datapath_raw_dummy.c)
     else()
         set(SOURCES ${SOURCES} datapath_raw.c datapath_raw_win.c datapath_raw_socket.c datapath_raw_socket_win.c datapath_raw_xdp_win.c)
